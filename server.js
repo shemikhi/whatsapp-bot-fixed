@@ -1,3 +1,5 @@
+require('dotenv').config({ path: '/vercel/share/.env.project' });
+
 const { Client, LocalAuth } = require('whatsapp-web.js');
 const express = require('express');
 const qrcode = require('qrcode');
@@ -11,7 +13,12 @@ const port = process.env.PORT || 3000;
 // Supabase client
 const supabaseUrl = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL;
 const supabaseAnonKey = process.env.SUPABASE_ANON_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-const supabase = createClient(supabaseUrl, supabaseAnonKey);
+
+if (!supabaseUrl || !supabaseAnonKey) {
+    console.warn('⚠️  Supabase environment variables not configured. Comments feature will not work.');
+}
+
+const supabase = supabaseUrl && supabaseAnonKey ? createClient(supabaseUrl, supabaseAnonKey) : null;
 
 // Middleware
 app.use(express.json());
@@ -157,6 +164,10 @@ app.get('/', (req, res) => {
 // Comments API - Get all comments
 app.get('/api/comments', async (req, res) => {
     try {
+        if (!supabase) {
+            return res.status(503).json({ error: 'Supabase not configured' });
+        }
+        
         const { data, error } = await supabase
             .from('comments')
             .select('*')
@@ -173,6 +184,10 @@ app.get('/api/comments', async (req, res) => {
 // Comments API - Create a comment
 app.post('/api/comments', async (req, res) => {
     try {
+        if (!supabase) {
+            return res.status(503).json({ error: 'Supabase not configured' });
+        }
+        
         const { author_name, content } = req.body;
 
         if (!author_name || !content) {
@@ -479,5 +494,5 @@ app.get('/comments', (req, res) => {
 });
 
 app.listen(port, () => {
-    console.log(\`Server running on port \${port}\`);
+    console.log(`Server running on port ${port}`);
 });
