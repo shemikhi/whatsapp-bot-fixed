@@ -20,6 +20,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { InquiryForm } from "@/components/inquiry-form"
+import { CommentSection } from "@/components/comment-section"
 
 export default function Home() {
   return (
@@ -925,6 +926,7 @@ export default function Home() {
           </div>
         </section>
 
+        <CommentSection />
       </main>
       <footer className="w-full border-t py-6 md:py-0 border-[#272153]/20">
         <div className="container flex flex-col items-center justify-between gap-4 md:h-24 md:flex-row">
