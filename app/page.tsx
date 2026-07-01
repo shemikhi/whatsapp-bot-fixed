@@ -20,6 +20,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { InquiryForm } from "@/components/inquiry-form"
+import { FeedbackSection } from "@/components/feedback-section"
 
 
 export default function Home() {
@@ -926,6 +927,7 @@ export default function Home() {
           </div>
         </section>
 
+        <FeedbackSection />
 
       </main>
       <footer className="w-full border-t py-6 md:py-0 border-[#272153]/20">
