@@ -5,9 +5,8 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Trash2, Send, Star } from 'lucide-react'
-import { createClient } from '@/lib/supabase/client'
 
-interface Comment {
+interface Feedback {
   id: string
   name: string
   email: string
@@ -17,9 +16,9 @@ interface Comment {
 }
 
 export function FeedbackSection() {
-  const [comments, setComments] = useState<Comment[]>([])
-  const [loading, setLoading] = useState(true)
+  const [feedback, setFeedback] = useState<Feedback[]>([])
   const [submitting, setSubmitting] = useState(false)
+  const [successMessage, setSuccessMessage] = useState('')
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -27,85 +26,91 @@ export function FeedbackSection() {
     rating: 5,
   })
 
-  const supabase = createClient()
-
-  // Fetch comments on mount
+  // Load feedback from localStorage on mount
   useEffect(() => {
-    fetchComments()
+    const stored = localStorage.getItem('feedback')
+    if (stored) {
+      try {
+        setFeedback(JSON.parse(stored))
+      } catch (err) {
+        console.log('[v0] Error loading feedback from storage')
+      }
+    }
   }, [])
 
-  const fetchComments = async () => {
-    try {
-      setLoading(true)
-      const { data, error } = await supabase
-        .from('comments')
-        .select('*')
-        .order('created_at', { ascending: false })
-        .limit(10)
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    const { name, value } = e.target
+    setFormData(prev => ({
+      ...prev,
+      [name]: value
+    }))
+  }
 
-      if (error) {
-        console.error('Error fetching comments:', error)
-        setComments([])
-      } else {
-        setComments(data || [])
-      }
-    } catch (err) {
-      console.error('Failed to fetch comments:', err)
-      setComments([])
-    } finally {
-      setLoading(false)
-    }
+  const handleRatingChange = (newRating: number) => {
+    setFormData(prev => ({
+      ...prev,
+      rating: newRating
+    }))
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
 
     if (!formData.name.trim() || !formData.message.trim()) {
-      alert('Please fill in all fields')
+      alert('Please fill in name and message')
       return
     }
 
     try {
       setSubmitting(true)
-      const { error } = await supabase.from('comments').insert([
-        {
-          name: formData.name,
-          email: formData.email || null,
-          message: formData.message,
-          rating: formData.rating,
-          approved: true,
-        },
-      ])
-
-      if (error) {
-        console.error('Error submitting comment:', error)
-        alert('Failed to submit feedback')
-      } else {
-        setFormData({ name: '', email: '', message: '', rating: 5 })
-        await fetchComments()
+      
+      // Create new feedback object
+      const newFeedback: Feedback = {
+        id: Date.now().toString(),
+        name: formData.name,
+        email: formData.email,
+        message: formData.message,
+        rating: formData.rating,
+        created_at: new Date().toISOString(),
       }
+
+      // Add to local state
+      const updatedFeedback = [newFeedback, ...feedback]
+      setFeedback(updatedFeedback)
+
+      // Save to localStorage
+      localStorage.setItem('feedback', JSON.stringify(updatedFeedback))
+
+      // Show success message
+      setSuccessMessage('Thank you for your feedback!')
+      
+      // Reset form
+      setFormData({
+        name: '',
+        email: '',
+        message: '',
+        rating: 5,
+      })
+
+      // Clear success message after 3 seconds
+      setTimeout(() => setSuccessMessage(''), 3000)
+      setSubmitting(false)
     } catch (err) {
-      console.error('Failed to submit comment:', err)
-      alert('Failed to submit feedback')
-    } finally {
+      console.error('Error submitting feedback:', err)
+      alert('Error submitting feedback. Please try again.')
       setSubmitting(false)
     }
   }
 
-  const handleDelete = async (id: string) => {
+  const handleDelete = (id: string) => {
     if (!confirm('Are you sure you want to delete this feedback?')) return
 
     try {
-      const { error } = await supabase.from('comments').delete().eq('id', id)
-
-      if (error) {
-        console.error('Error deleting comment:', error)
-        alert('Failed to delete feedback')
-      } else {
-        await fetchComments()
-      }
+      const updatedFeedback = feedback.filter(item => item.id !== id)
+      setFeedback(updatedFeedback)
+      localStorage.setItem('feedback', JSON.stringify(updatedFeedback))
     } catch (err) {
-      console.error('Failed to delete comment:', err)
+      console.error('Error deleting feedback:', err)
       alert('Failed to delete feedback')
     }
   }
@@ -190,9 +195,7 @@ export function FeedbackSection() {
                         <button
                           key={star}
                           type="button"
-                          onClick={() =>
-                            setFormData({ ...formData, rating: star })
-                          }
+                          onClick={() => handleRatingChange(star)}
                           disabled={submitting}
                           className="transition-transform hover:scale-110"
                         >
@@ -224,6 +227,12 @@ export function FeedbackSection() {
                     />
                   </div>
 
+                  {successMessage && (
+                    <div className="bg-green-50 border border-green-200 text-green-700 px-4 py-2 rounded-lg text-sm">
+                      {successMessage}
+                    </div>
+                  )}
+                  
                   <Button
                     type="submit"
                     disabled={submitting}
@@ -236,52 +245,47 @@ export function FeedbackSection() {
               </div>
             </div>
 
-            {/* Comments List */}
+            {/* Feedback List */}
             <div className="lg:col-span-2">
               <div className="bg-white rounded-xl shadow-lg p-6 border border-[#272153]/10">
                 <h3 className="text-xl font-bold text-[#272153] mb-4">
-                  Recent Feedback ({comments.length})
+                  Recent Feedback ({feedback.length})
                 </h3>
 
-                {loading ? (
-                  <div className="flex items-center justify-center py-8">
-                    <div className="animate-spin">
-                      <div className="h-8 w-8 border-4 border-[#272153] border-t-transparent rounded-full" />
-                    </div>
-                  </div>
-                ) : comments.length === 0 ? (
+                {feedback.length === 0 ? (
                   <p className="text-gray-500 text-center py-8">
                     No feedback yet. Be the first to share!
                   </p>
                 ) : (
                   <div className="space-y-4 max-h-[600px] overflow-y-auto">
-                    {comments.map((comment) => (
+                    {feedback.map((item) => (
                       <div
-                        key={comment.id}
+                        key={item.id}
                         className="border border-[#272153]/10 rounded-lg p-4 hover:shadow-md transition-shadow"
                       >
                         <div className="flex justify-between items-start mb-2">
                           <div>
                             <p className="font-semibold text-[#272153]">
-                              {comment.name}
+                              {item.name}
                             </p>
                             <p className="text-sm text-gray-500">
-                              {new Date(comment.created_at).toLocaleDateString()}
+                              {new Date(item.created_at).toLocaleDateString()}
                             </p>
                           </div>
                           <button
-                            onClick={() => handleDelete(comment.id)}
-                            className="text-red-500 hover:text-red-700 transition-colors"
+                            onClick={() => handleDelete(item.id)}
+                            className="text-red-500 hover:text-red-700 transition-colors p-1"
+                            title="Delete feedback"
                           >
                             <Trash2 size={18} />
                           </button>
                         </div>
 
                         <div className="mb-2">
-                          {renderStars(comment.rating)}
+                          {renderStars(item.rating)}
                         </div>
 
-                        <p className="text-gray-700">{comment.message}</p>
+                        <p className="text-gray-700">{item.message}</p>
                       </div>
                     ))}
                   </div>
