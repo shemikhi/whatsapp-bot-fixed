@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Trash2, Send, Star } from 'lucide-react'
+import { useRef } from 'react'
 
 interface Feedback {
   id: string
@@ -19,6 +20,7 @@ export function FeedbackSection() {
   const [feedback, setFeedback] = useState<Feedback[]>([])
   const [submitting, setSubmitting] = useState(false)
   const [successMessage, setSuccessMessage] = useState('')
+  const [hoverRating, setHoverRating] = useState(0)
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -115,9 +117,9 @@ export function FeedbackSection() {
     }
   }
 
-  const renderStars = (rating: number) => {
+  const renderStars = (rating: number, isStatic = true) => {
     return (
-      <div className="flex gap-1">
+      <div className="flex gap-1.5">
         {[...Array(5)].map((_, i) => (
           <Star
             key={i}
@@ -128,6 +130,41 @@ export function FeedbackSection() {
                 : 'text-gray-300'
             }`}
           />
+        ))}
+      </div>
+    )
+  }
+
+  const renderInteractiveStars = () => {
+    return (
+      <div className="flex gap-2">
+        {[1, 2, 3, 4, 5].map((star) => (
+          <button
+            key={star}
+            type="button"
+            onClick={() => handleRatingChange(star)}
+            onMouseEnter={() => setHoverRating(star)}
+            onMouseLeave={() => setHoverRating(0)}
+            disabled={submitting}
+            className="relative transition-all duration-200 transform hover:scale-125 active:scale-95 focus:outline-none"
+          >
+            <Star
+              size={32}
+              className={`transition-all duration-200 ${
+                star <= (hoverRating || formData.rating)
+                  ? 'fill-yellow-400 text-yellow-400 drop-shadow-lg'
+                  : 'text-gray-300 hover:text-yellow-300'
+              }`}
+            />
+            {star <= (hoverRating || formData.rating) && (
+              <div className="absolute inset-0 animate-pulse">
+                <Star
+                  size={32}
+                  className="fill-yellow-300 text-yellow-300 blur-sm opacity-50"
+                />
+              </div>
+            )}
+          </button>
         ))}
       </div>
     )
@@ -187,29 +224,11 @@ export function FeedbackSection() {
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Rating
+                    <label className="block text-sm font-medium text-gray-700 mb-3">
+                      How would you rate us? 
+                      <span className="text-yellow-500 ml-1 font-bold">{formData.rating}/5</span>
                     </label>
-                    <div className="flex gap-2">
-                      {[1, 2, 3, 4, 5].map((star) => (
-                        <button
-                          key={star}
-                          type="button"
-                          onClick={() => handleRatingChange(star)}
-                          disabled={submitting}
-                          className="transition-transform hover:scale-110"
-                        >
-                          <Star
-                            size={24}
-                            className={`${
-                              star <= formData.rating
-                                ? 'fill-yellow-400 text-yellow-400'
-                                : 'text-gray-300'
-                            }`}
-                          />
-                        </button>
-                      ))}
-                    </div>
+                    {renderInteractiveStars()}
                   </div>
 
                   <div>
@@ -257,35 +276,44 @@ export function FeedbackSection() {
                     No feedback yet. Be the first to share!
                   </p>
                 ) : (
-                  <div className="space-y-4 max-h-[600px] overflow-y-auto">
+                  <div className="space-y-3 max-h-[600px] overflow-y-auto pr-2">
                     {feedback.map((item) => (
                       <div
                         key={item.id}
-                        className="border border-[#272153]/10 rounded-lg p-4 hover:shadow-md transition-shadow"
+                        className="border-l-4 border-l-yellow-400 bg-gradient-to-r from-yellow-50 to-transparent rounded-lg p-4 hover:shadow-lg hover:border-l-yellow-500 transition-all duration-300 group"
                       >
-                        <div className="flex justify-between items-start mb-2">
-                          <div>
-                            <p className="font-semibold text-[#272153]">
+                        <div className="flex justify-between items-start mb-3">
+                          <div className="flex-1">
+                            <p className="font-bold text-[#272153] text-lg">
                               {item.name}
                             </p>
-                            <p className="text-sm text-gray-500">
-                              {new Date(item.created_at).toLocaleDateString()}
+                            <p className="text-xs text-gray-400">
+                              {new Date(item.created_at).toLocaleDateString('en-US', {
+                                month: 'short',
+                                day: 'numeric',
+                                year: 'numeric'
+                              })}
                             </p>
                           </div>
                           <button
                             onClick={() => handleDelete(item.id)}
-                            className="text-red-500 hover:text-red-700 transition-colors p-1"
+                            className="text-gray-400 hover:text-red-600 opacity-0 group-hover:opacity-100 transition-all p-1"
                             title="Delete feedback"
                           >
                             <Trash2 size={18} />
                           </button>
                         </div>
 
-                        <div className="mb-2">
-                          {renderStars(item.rating)}
+                        <div className="mb-3 flex items-center gap-2">
+                          <div>
+                            {renderStars(item.rating)}
+                          </div>
+                          <span className="text-xs font-semibold text-yellow-600 bg-yellow-100 px-2 py-1 rounded-full">
+                            {item.rating} stars
+                          </span>
                         </div>
 
-                        <p className="text-gray-700">{item.message}</p>
+                        <p className="text-gray-700 leading-relaxed text-sm">{item.message}</p>
                       </div>
                     ))}
                   </div>
